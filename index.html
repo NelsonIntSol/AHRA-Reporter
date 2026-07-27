@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Arkansas Hunger Alliance — County Report Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --green-950:#0f1f04;--green-900:#1a3508;--green-800:#27500A;--green-700:#3B6D11;
+  --green-600:#4d8016;--green-500:#639922;--green-400:#82b83a;--green-200:#C0DD97;
+  --green-50:#EAF3DE;
+  --stone-900:#1c1b18;--stone-700:#3a3832;--stone-500:#6b6860;--stone-400:#8a877f;
+  --stone-300:#c4c1b8;--stone-200:#dddbd4;--stone-100:#f0ede6;--stone-50:#f8f6f1;
+  --white:#ffffff;--red-600:#b91c1c;--amber-500:#d97706;
+  --radius-sm:4px;--radius:8px;--radius-lg:12px;--radius-xl:16px;
+  --shadow:0 4px 12px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:0 12px 32px rgba(0,0,0,0.10),0 4px 8px rgba(0,0,0,0.06);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;font-size:14px;background:var(--stone-50);color:var(--stone-900);min-height:100vh;line-height:1.5;}
+
+/* HEADER */
+.app-header{background:var(--green-900);background-image:linear-gradient(135deg,var(--green-950) 0%,var(--green-800) 60%,var(--green-700) 100%);padding:0 2rem;height:68px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,0.25);}
+.header-brand{display:flex;align-items:center;gap:14px;}
+.header-icon{width:36px;height:36px;background:var(--green-500);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.header-text h1{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--white);line-height:1.2;}
+.header-text p{font-size:11px;font-weight:300;color:var(--green-200);letter-spacing:0.08em;text-transform:uppercase;}
+.header-badge{font-size:11px;font-weight:500;color:var(--green-200);border:1px solid rgba(192,221,151,0.35);padding:4px 10px;border-radius:var(--radius-sm);letter-spacing:0.05em;}
+
+/* LAYOUT */
+.app-body{display:grid;grid-template-columns:400px 1fr;min-height:calc(100vh - 68px);}
+
+/* LEFT PANEL */
+.builder-panel{background:var(--white);border-right:1px solid var(--stone-200);display:flex;flex-direction:column;overflow-y:auto;max-height:calc(100vh - 68px);position:sticky;top:68px;}
+.builder-inner{padding:1.5rem;flex:1;}
+.panel-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;color:var(--green-800);margin-bottom:4px;}
+.panel-subtitle{font-size:12px;color:var(--stone-500);margin-bottom:1.5rem;line-height:1.5;}
+
+/* STEP BLOCK */
+.step-block{margin-bottom:1.25rem;border:1.5px solid var(--green-500);border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 0 0 3px rgba(99,153,34,0.10);}
+.step-head{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--green-50);border-bottom:1px solid var(--green-200);user-select:none;}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--green-600);color:var(--white);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-head-text h3{font-size:13px;font-weight:600;color:var(--stone-900);line-height:1.2;}
+.step-head-text p{font-size:11px;color:var(--stone-500);}
+.step-optional{margin-left:auto;font-size:10px;color:var(--stone-500);background:var(--stone-100);padding:2px 7px;border-radius:20px;white-space:nowrap;}
+.step-body{padding:14px;}
+
+/* COUNTY MULTI-SELECT */
+.county-search-wrap{position:relative;margin-bottom:8px;}
+.county-search{width:100%;padding:8px 32px 8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;border:1.5px solid var(--stone-200);border-radius:var(--radius);background:var(--white);color:var(--stone-900);outline:none;transition:border-color 0.15s;}
+.county-search:focus{border-color:var(--green-500);}
+.county-search-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--stone-400);font-size:13px;pointer-events:none;}
+.county-list-wrap{border:1.5px solid var(--stone-200);border-radius:var(--radius);overflow:hidden;}
+.county-list-actions{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--stone-50);border-bottom:1px solid var(--stone-200);}
+.county-sel-count{font-size:11px;color:var(--stone-500);}
+.county-sel-count strong{color:var(--green-700);}
+.county-action-btns{display:flex;gap:6px;}
+.county-act-btn{font-size:11px;padding:2px 8px;border-radius:var(--radius-sm);border:1px solid var(--stone-300);background:var(--white);color:var(--stone-600);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.1s;}
+.county-act-btn:hover{background:var(--green-50);border-color:var(--green-400);color:var(--green-700);}
+.county-list{max-height:240px;overflow-y:auto;}
+.county-list::-webkit-scrollbar{width:4px;}
+.county-list::-webkit-scrollbar-thumb{background:var(--stone-300);border-radius:2px;}
+.county-chk-row{display:flex;align-items:center;gap:9px;padding:6px 10px;cursor:pointer;transition:background 0.1s;user-select:none;}
+.county-chk-row:hover{background:var(--green-50);}
+.county-chk-row.selected{background:var(--green-50);}
+.county-chk-box{width:15px;height:15px;border:1.5px solid var(--stone-300);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;transition:all 0.12s;}
+.county-chk-row.selected .county-chk-box{background:var(--green-600);border-color:var(--green-600);color:white;}
+.county-chk-name{font-size:13px;color:var(--stone-900);}
+.county-chk-row.hidden{display:none;}
+.county-none-msg{padding:10px;font-size:12px;color:var(--stone-400);text-align:center;display:none;}
+
+/* STATUS PILL */
+.data-status{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;border-radius:var(--radius);background:var(--stone-50);border:1px solid var(--stone-200);font-size:12px;color:var(--stone-500);}
+.data-status.loading{color:var(--amber-500);border-color:#fde68a;background:#fef9ee;}
+.data-status.ready{color:var(--green-700);border-color:var(--green-200);background:var(--green-50);}
+.data-status.error{color:var(--red-600);border-color:#fecaca;background:#fef2f2;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+/* GENERATE BTN */
+.btn-generate{width:100%;padding:13px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;background:var(--green-800);color:var(--white);border:none;border-radius:var(--radius);cursor:pointer;transition:background 0.15s,transform 0.1s;margin-top:1rem;letter-spacing:0.01em;}
+.btn-generate:hover:not(:disabled){background:var(--green-700);}
+.btn-generate:active:not(:disabled){transform:scale(0.99);}
+.btn-generate:disabled{background:var(--stone-200);color:var(--stone-500);cursor:not-allowed;}
+.btn-generate-sub{font-size:11px;font-weight:400;display:block;opacity:0.7;margin-top:2px;}
+.builder-footer{padding:12px 1.5rem;border-top:1px solid var(--stone-200);background:var(--stone-50);}
+
+/* Loading dots */
+.loading-dots span{display:inline-block;width:5px;height:5px;background:var(--amber-500);border-radius:50%;animation:ldot 1s infinite;margin:0 1px;vertical-align:middle;}
+.loading-dots span:nth-child(2){animation-delay:0.2s;}
+.loading-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes ldot{0%,100%{opacity:0.2}50%{opacity:1}}
+
+/* RIGHT PANEL */
+.preview-panel{overflow-y:auto;padding:2rem;background:var(--stone-100);}
+.preview-idle{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:12px;color:var(--stone-500);}
+.preview-idle .idle-icon{font-size:48px;opacity:0.4;}
+.preview-idle h2{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--stone-700);}
+.preview-idle p{font-size:13px;max-width:320px;line-height:1.6;}
+
+/* PRINT BAR */
+.print-bar{display:flex;align-items:center;justify-content:space-between;background:var(--green-800);border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:1.5rem;box-shadow:var(--shadow);}
+.print-bar-left{font-size:13px;color:var(--green-200);}
+.print-bar-left strong{color:white;font-size:14px;display:block;}
+.print-actions{display:flex;gap:8px;}
+.btn-print{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 18px;background:var(--green-500);color:white;border:none;border-radius:var(--radius);cursor:pointer;transition:background 0.15s;}
+.btn-print:hover{background:var(--green-400);}
+.btn-reset-report{font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 14px;background:transparent;color:var(--green-200);border:1px solid rgba(192,221,151,0.3);border-radius:var(--radius);cursor:pointer;}
+.btn-reset-report:hover{background:rgba(255,255,255,0.08);}
+
+/* REPORT DOC */
+.report-doc{background:var(--white);border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);overflow:hidden;}
+.county-report-page{background:var(--white);}
+.county-report-page + .county-report-page{border-top:6px solid var(--green-800);margin-top:2rem;}
+.report-masthead{background:var(--green-900);background-image:linear-gradient(135deg,var(--green-950) 0%,var(--green-800) 70%);padding:2rem 2.5rem;display:flex;align-items:flex-start;justify-content:space-between;gap:2rem;}
+.report-masthead-left h1{font-family:'Playfair Display',serif;font-size:26px;font-weight:400;color:var(--white);line-height:1.2;margin-bottom:6px;}
+.report-masthead-left .county-label{font-size:12px;font-weight:500;color:var(--green-200);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;}
+.report-masthead-right{text-align:right;flex-shrink:0;}
+.report-masthead-right .org{font-family:'Playfair Display',serif;font-size:15px;color:var(--white);margin-bottom:4px;}
+.report-masthead-right .meta{font-size:11px;color:var(--green-200);line-height:1.8;}
+.report-masthead-right .meta a{color:var(--green-400);}
+.report-content{padding:2rem 2.5rem;}
+.report-section{margin-bottom:2rem;}
+.report-section:last-child{margin-bottom:0;}
+.section-label{display:flex;align-items:center;gap:10px;margin-bottom:1rem;}
+.section-label-icon{width:32px;height:32px;background:var(--green-50);border:1.5px solid var(--green-200);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.section-label-text h2{font-family:'Playfair Display',serif;font-size:17px;font-weight:400;color:var(--green-800);}
+.section-label-text p{font-size:11px;color:var(--stone-500);}
+
+/* DATA TABLE */
+.data-table-wrap{border:1px solid var(--stone-200);border-radius:var(--radius-lg);overflow:hidden;font-size:12px;margin-bottom:12px;}
+.data-table{width:100%;border-collapse:collapse;}
+.data-table thead{display:table-header-group;}
+.data-table th{background:var(--stone-50);padding:8px 12px;text-align:left;font-weight:600;font-size:11px;letter-spacing:0.04em;color:var(--stone-700);border-bottom:1px solid var(--stone-200);}
+.data-table td{padding:8px 12px;border-bottom:1px solid var(--stone-100);color:var(--stone-900);vertical-align:top;}
+.data-table tr{page-break-inside:avoid;break-inside:avoid;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:var(--green-50);}
+td.field-name{font-weight:500;color:var(--green-800);width:52%;}
+.null-val{color:var(--stone-300);font-style:italic;}
+.error-row{padding:1rem;background:#fee2e2;color:var(--red-600);font-size:12px;border-radius:var(--radius);}
+.report-divider{border:none;border-top:1px solid var(--stone-200);margin:1.5rem 0;}
+.section-label{page-break-after:avoid;break-after:avoid;}
+.data-table-wrap{page-break-inside:auto;break-inside:auto;}
+.notes-box{width:100%;min-height:80px;border:1.5px solid var(--stone-200);border-radius:var(--radius);padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--stone-900);resize:vertical;line-height:1.5;}
+.notes-box:focus{outline:none;border-color:var(--green-500);}
+.report-footer-bar{background:var(--stone-50);border-top:1px solid var(--stone-200);padding:1rem 2.5rem;display:flex;align-items:center;justify-content:space-between;}
+.report-footer-bar .footer-left{font-size:11px;color:var(--stone-500);line-height:1.7;}
+.report-footer-bar .footer-left a{color:var(--green-600);}
+.report-footer-bar .footer-right{font-size:11px;color:var(--stone-400);text-align:right;}
+
+/* PRINT */
+@media print {
+  body{background:white;}
+  .app-header,.builder-panel,.print-bar{display:none!important;}
+  .app-body{display:block;}
+  .preview-panel{padding:0;background:white;overflow:visible;}
+  .preview-idle{display:none!important;}
+  .report-doc{border-radius:0;box-shadow:none;}
+  .county-report-page{page-break-before:always;break-before:page;}
+  .county-report-page:first-child{page-break-before:auto;break-before:auto;}
+  .county-report-page + .county-report-page{border-top:none;margin-top:0;}
+  .report-masthead{background:var(--green-900)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .data-table th{background:var(--stone-50)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .data-table tr:hover td{background:none!important;}
+  .notes-box{border:1px solid #ccc;resize:none;}
+  .report-section{page-break-inside:avoid;break-inside:avoid;}
+  .section-label{page-break-after:avoid;break-after:avoid;}
+  .data-table-wrap{page-break-inside:auto;break-inside:auto;}
+  .data-table tr{page-break-inside:avoid;break-inside:avoid;}
+  .data-table thead{display:table-header-group;}
+  @page{margin:1.5cm 2cm;size:letter;}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-brand">
+    <div class="header-icon">🌾</div>
+    <div class="header-text">
+      <h1>Arkansas Hunger Relief Alliance</h1>
+      <p>GIS County Report Builder</p>
+    </div>
+  </div>
+  <div class="header-badge">Powered by ArcGIS Enterprise</div>
+</header>
+
+<div class="app-body">
+
+  <!-- LEFT: BUILDER -->
+  <aside class="builder-panel">
+    <div class="builder-inner">
+      <h2 class="panel-title">Build a Report</h2>
+      <p class="panel-subtitle">Select one or more counties then generate your printable report. Leave all unchecked for a statewide report. Each county prints on its own page.</p>
+
+      <!-- COUNTY SELECTOR -->
+      <div class="step-block">
+        <div class="step-head">
+          <div class="step-num">1</div>
+          <div class="step-head-text">
+            <h3>Select Counties</h3>
+            <p>Each selected county gets its own page</p>
+          </div>
+          <span class="step-optional">Optional</span>
+        </div>
+        <div class="step-body">
+          <div class="county-search-wrap">
+            <input class="county-search" type="text" id="county-search"
+              placeholder="Search counties…" oninput="filterCounties()" autocomplete="off"/>
+            <span class="county-search-icon">⌕</span>
+          </div>
+          <div class="county-list-wrap">
+            <div class="county-list-actions">
+              <span class="county-sel-count"><strong id="sel-count">0</strong> selected</span>
+              <div class="county-action-btns">
+                <button class="county-act-btn" onclick="selectAllCounties()">All</button>
+                <button class="county-act-btn" onclick="clearAllCounties()">Clear</button>
+              </div>
+            </div>
+            <div class="county-list" id="county-list"></div>
+            <div class="county-none-msg" id="county-none-msg">No counties match your search.</div>
+          </div>
+
+          <!-- Live data status -->
+          <div class="data-status" id="data-status" style="display:none;"></div>
+        </div>
+      </div>
+
+      <button class="btn-generate" id="gen-btn" onclick="generateReport()" disabled>
+        Generate Report
+        <span class="btn-generate-sub" id="gen-sub">Select counties or generate a statewide report</span>
+      </button>
+    </div>
+
+    <div class="builder-footer">
+      <div style="font-size:11px;color:var(--stone-500);line-height:1.6;">
+        Data: County Data Aggregated · ArcGIS Enterprise ·
+        <a href="https://gis.nelsonintelligencesolutions.com/portal/apps/experiencebuilder/experience/?id=57d941632d1f4fdd9356952cb91910cc"
+           target="_blank" style="color:var(--green-600);">View Dashboard ↗</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT: PREVIEW -->
+  <main class="preview-panel">
+    <div class="preview-idle" id="preview-idle">
+      <div class="idle-icon">🗂️</div>
+      <h2>Your report will appear here</h2>
+      <p>Select one or more counties on the left and click <strong>Generate Report</strong>. Each county prints on its own page.</p>
+    </div>
+
+    <div id="report-area" style="display:none;">
+      <div class="print-bar">
+        <div class="print-bar-left">
+          <strong id="print-bar-title">Report ready</strong>
+          <span id="print-bar-sub">Review below, then print.</span>
+        </div>
+        <div class="print-actions">
+          <button class="btn-reset-report" onclick="resetReport()">← Edit</button>
+          <button class="btn-print" onclick="window.print()">🖨 Print / Save PDF</button>
+        </div>
+      </div>
+      <div id="report-pages"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const LAYER_URL = 'https://gis.nelsonintelligencesolutions.com/arcgis/rest/services/Hosted/County_Data_Aggregated/FeatureServer/0';
+const COUNTY_FIELD = 'county';
+
+const SKIP_FIELDS_SET = new Set(['objectid','objectid_1','shape__length','shape__area',
+  'shape_length','shape_area','globalid','fid']);
+
+const ALL_COUNTIES = [
+  'Arkansas','Ashley','Baxter','Benton','Boone','Bradley','Calhoun','Carroll',
+  'Chicot','Clark','Clay','Cleburne','Cleveland','Columbia','Conway','Craighead',
+  'Crawford','Crittenden','Cross','Dallas','Desha','Drew','Faulkner','Franklin',
+  'Fulton','Garland','Grant','Greene','Hempstead','Hot Spring','Howard',
+  'Independence','Izard','Jackson','Jefferson','Johnson','Lafayette','Lawrence',
+  'Lee','Lincoln','Little River','Logan','Lonoke','Madison','Marion','Miller',
+  'Mississippi','Monroe','Montgomery','Nevada','Newton','Ouachita','Perry',
+  'Phillips','Pike','Poinsett','Polk','Pope','Prairie','Pulaski','Randolph',
+  'St. Francis','Saline','Scott','Searcy','Sebastian','Sevier','Sharp','Stone',
+  'Union','Van Buren','Washington','White','Woodruff','Yell'
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const state = {
+  selectedCounties: new Set(),
+  cache: {},
+  // Ordered list of {name, alias} from service metadata — drives table render order
+  orderedFields: [],
+  // Comma-separated field names to use in outFields — avoids * truncation
+  outFields: '*'
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init() {
+  buildCountyList();
+  await discoverFields();
+  document.getElementById('gen-btn').disabled = false;
+  document.getElementById('gen-sub').textContent = 'Ready — generate a statewide report or select counties first';
+}
+
+// Fetch field metadata: builds ordered field list + explicit outFields string
+async function discoverFields() {
+  try {
+    const res = await fetch(`${LAYER_URL}?f=json`);
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.fields) return;
+
+    const ordered = [];
+    const names = [];
+    json.fields.forEach(f => {
+      if (SKIP_FIELDS_SET.has(f.name.toLowerCase())) return;
+      ordered.push({ name: f.name, alias: f.alias || f.name });
+      names.push(f.name);
+    });
+    state.orderedFields = ordered;
+    // Explicit field list prevents ArcGIS from truncating at its default limit
+    state.outFields = names.join(',');
+  } catch(e) {
+    // Non-fatal — falls back to * and attribute key order
+  }
+}
+
+// ── COUNTY LIST ───────────────────────────────────────────────────────────────
+function buildCountyList() {
+  const list = document.getElementById('county-list');
+  list.innerHTML = '';
+  ALL_COUNTIES.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'county-chk-row';
+    row.dataset.county = c;
+    row.innerHTML = `<div class="county-chk-box">✓</div><span class="county-chk-name">${c} County</span>`;
+    row.addEventListener('click', () => toggleCounty(c, row));
+    list.appendChild(row);
+  });
+}
+
+function toggleCounty(name, row) {
+  if (state.selectedCounties.has(name)) {
+    state.selectedCounties.delete(name);
+    row.classList.remove('selected');
+  } else {
+    state.selectedCounties.add(name);
+    row.classList.add('selected');
+  }
+  updateSelCount();
+  updateGenBtn();
+}
+
+function filterCounties() {
+  const q = document.getElementById('county-search').value.toLowerCase().trim();
+  let visible = 0;
+  document.querySelectorAll('.county-chk-row').forEach(row => {
+    const match = !q || row.dataset.county.toLowerCase().includes(q);
+    row.classList.toggle('hidden', !match);
+    if (match) visible++;
+  });
+  document.getElementById('county-none-msg').style.display = visible === 0 ? 'block' : 'none';
+}
+
+function selectAllCounties() {
+  document.querySelectorAll('.county-chk-row:not(.hidden)').forEach(row => {
+    state.selectedCounties.add(row.dataset.county);
+    row.classList.add('selected');
+  });
+  updateSelCount();
+  updateGenBtn();
+}
+
+function clearAllCounties() {
+  document.querySelectorAll('.county-chk-row').forEach(row => row.classList.remove('selected'));
+  state.selectedCounties.clear();
+  updateSelCount();
+  updateGenBtn();
+}
+
+function updateSelCount() {
+  document.getElementById('sel-count').textContent = state.selectedCounties.size;
+}
+
+function updateGenBtn() {
+  const sub = document.getElementById('gen-sub');
+  const n = state.selectedCounties.size;
+  sub.textContent = n === 0
+    ? 'Ready — will generate a statewide report'
+    : `${n} count${n !== 1 ? 'ies' : 'y'} selected`;
+}
+
+// ── FETCH DATA ────────────────────────────────────────────────────────────────
+function setStatus(msg, type = '') {
+  const el = document.getElementById('data-status');
+  el.style.display = 'flex';
+  el.className = 'data-status ' + type;
+  el.innerHTML = `<div class="status-dot"></div>${msg}`;
+}
+
+async function fetchCounty(county) {
+  const cacheKey = county || '__all__';
+  if (state.cache[cacheKey] !== undefined) return state.cache[cacheKey];
+
+  const where = county
+    ? `UPPER(${COUNTY_FIELD}) = UPPER('${county.replace(/'/g, "''")}')`
+    : '1=1';
+  const params = new URLSearchParams({ where, outFields: state.outFields, returnGeometry: false, f: 'json' });
+
+  try {
+    const res = await fetch(`${LAYER_URL}/query?${params}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(`${json.error.code}: ${json.error.message}`);
+    state.cache[cacheKey] = json.features || [];
+    return state.cache[cacheKey];
+  } catch(e) {
+    const err = { error: e.message };
+    state.cache[cacheKey] = err;
+    return err;
+  }
+}
+
+// ── FORMAT VALUE ──────────────────────────────────────────────────────────────
+function fmtVal(val) {
+  if (val === null || val === undefined || val === '') return '<span class="null-val">—</span>';
+  if (typeof val === 'number') {
+    if (Number.isInteger(val)) return val.toLocaleString('en-US');
+    return val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+  }
+  return String(val);
+}
+
+// ── BUILD ONE COUNTY PAGE ─────────────────────────────────────────────────────
+function buildPage(county, features, dateStr, isStatewide) {
+  const page = document.createElement('div');
+  page.className = 'county-report-page';
+
+  const countyLabel = isStatewide ? 'Statewide Report — All Arkansas Counties' : `${county} County, Arkansas`;
+  const title = isStatewide ? 'Arkansas Food Security Report' : `${county} County Food Security Report`;
+
+  page.innerHTML = `
+    <div class="report-masthead">
+      <div class="report-masthead-left">
+        <div class="county-label">${countyLabel}</div>
+        <h1>${title}</h1>
+        <div style="font-size:12px;color:var(--green-200);margin-top:6px;">County Data Aggregated · Arkansas Hunger Relief Alliance</div>
+      </div>
+      <div class="report-masthead-right">
+        <div class="org">Arkansas Hunger Relief Alliance</div>
+        <div class="meta">
+          200 W. Capitol Ave., Suite 1300<br>Little Rock, AR 72201<br>
+          <a href="https://arhungeralliance.org">ARHungerAlliance.org</a><br>
+          <strong style="color:white;">${dateStr}</strong>
+        </div>
+      </div>
+    </div>
+    <div class="report-content" id="content-${(county||'statewide').replace(/\s/g,'-')}"></div>
+    <div class="report-footer-bar">
+      <div class="footer-left">
+        Arkansas Hunger Relief Alliance · <a href="https://arhungeralliance.org">ARHungerAlliance.org</a><br>
+        GIS Dashboard: <a href="https://gis.nelsonintelligencesolutions.com/portal/apps/experiencebuilder/experience/?id=57d941632d1f4fdd9356952cb91910cc">Nelson Intelligence Solutions Portal</a>
+      </div>
+      <div class="footer-right">Generated: ${dateStr}</div>
+    </div>`;
+
+  const content = page.querySelector('.report-content');
+  const section = document.createElement('div');
+  section.className = 'report-section';
+
+  section.innerHTML = `
+    <div class="section-label">
+      <div class="section-label-icon">📋</div>
+      <div class="section-label-text">
+        <h2>County Data</h2>
+        <p>${isStatewide ? 'All Arkansas Counties' : county + ' County'}</p>
+      </div>
+    </div>`;
+
+  if (features && features.error) {
+    section.innerHTML += `<div class="error-row">⚠ Could not load data: ${features.error}</div>`;
+  } else if (!features || features.length === 0) {
+    section.innerHTML += `<div class="error-row">No data found${county ? ' for ' + county + ' County' : ''}. Check that the county name matches the data exactly.</div>`;
+  } else {
+    features.forEach((feat, fi) => {
+      const attrs = feat.attributes;
+      const wrap = document.createElement('div');
+      wrap.className = 'data-table-wrap';
+      if (features.length > 1 && fi > 0) wrap.style.marginTop = '12px';
+
+      const tbl = document.createElement('table');
+      tbl.className = 'data-table';
+      tbl.innerHTML = `<thead><tr><th style="width:52%">Field</th><th>Value</th></tr></thead>`;
+      const tbody = document.createElement('tbody');
+
+      // County grouper row for statewide multi-record view
+      if (features.length > 1) {
+        const countyVal = attrs[COUNTY_FIELD] || attrs[COUNTY_FIELD.toUpperCase()] || '';
+        if (countyVal) {
+          const gr = document.createElement('tr');
+          gr.innerHTML = `<td colspan="2" style="background:var(--green-50);font-weight:600;color:var(--green-800);font-size:12px;padding:8px 12px;letter-spacing:0.04em;">${countyVal} County</td>`;
+          tbody.appendChild(gr);
+        }
+      }
+
+      // Use service-defined field order if available, otherwise fall back to attribute key order
+      const fieldList = state.orderedFields.length > 0
+        ? state.orderedFields
+        : Object.keys(attrs)
+            .filter(k => !SKIP_FIELDS_SET.has(k.toLowerCase()))
+            .map(k => ({ name: k, alias: k }));
+
+      fieldList.forEach(({ name, alias }) => {
+        // Look up by exact name or case-insensitive match
+        const val = attrs.hasOwnProperty(name) ? attrs[name]
+          : attrs[name.toLowerCase()] !== undefined ? attrs[name.toLowerCase()]
+          : undefined;
+        if (val === undefined) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="field-name">${alias}</td><td class="field-val">${fmtVal(val)}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      tbl.appendChild(tbody);
+      wrap.appendChild(tbl);
+      section.appendChild(wrap);
+    });
+  }
+
+  content.appendChild(section);
+
+  // Notes
+  const hr = document.createElement('hr'); hr.className = 'report-divider'; content.appendChild(hr);
+  const ns = document.createElement('div'); ns.className = 'report-section';
+  ns.innerHTML = `
+    <div class="section-label">
+      <div class="section-label-icon">📝</div>
+      <div class="section-label-text">
+        <h2>Analyst Notes</h2>
+        <p>Add observations or context for this ${isStatewide ? 'report' : 'county'}</p>
+      </div>
+    </div>
+    <textarea class="notes-box" placeholder="Add notes${county ? ' for ' + county + ' County' : ''}…"></textarea>`;
+  content.appendChild(ns);
+
+  return page;
+}
+
+// ── GENERATE REPORT ───────────────────────────────────────────────────────────
+async function generateReport() {
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.querySelector('.btn-generate-sub').textContent = 'Fetching data…';
+  setStatus('Fetching data from ArcGIS…', 'loading');
+
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const counties = [...state.selectedCounties].sort();
+  const isStatewide = counties.length === 0;
+
+  // Fetch all needed data in parallel
+  let fetchList = isStatewide ? [null] : counties;
+  const results = await Promise.all(fetchList.map(c => fetchCounty(c)));
+
+  const anyError = results.some(r => r && r.error);
+  if (anyError) {
+    setStatus('⚠ Some data could not be loaded — check network access to the service.', 'error');
+  } else {
+    const totalRecs = results.reduce((s, r) => s + (Array.isArray(r) ? r.length : 0), 0);
+    setStatus(`✓ ${totalRecs} record${totalRecs !== 1 ? 's' : ''} loaded`, 'ready');
+  }
+
+  // Print bar
+  const cLabel = isStatewide ? 'Statewide Report'
+    : counties.length === 1 ? counties[0] + ' County Report'
+    : `${counties.length}-County Report`;
+  document.getElementById('print-bar-title').textContent = cLabel;
+  document.getElementById('print-bar-sub').textContent = `County Data Aggregated · ${dateStr}`;
+
+  // Build pages
+  const pagesEl = document.getElementById('report-pages');
+  pagesEl.innerHTML = '';
+  const doc = document.createElement('div');
+  doc.className = 'report-doc';
+
+  if (isStatewide) {
+    doc.appendChild(buildPage(null, results[0], dateStr, true));
+  } else {
+    counties.forEach((county, i) => {
+      doc.appendChild(buildPage(county, results[i], dateStr, false));
+    });
+  }
+
+  pagesEl.appendChild(doc);
+
+  document.getElementById('preview-idle').style.display = 'none';
+  document.getElementById('report-area').style.display = 'block';
+  document.getElementById('report-area').scrollIntoView({ behavior:'smooth', block:'start' });
+
+  btn.disabled = false;
+  btn.querySelector('.btn-generate-sub').textContent = isStatewide
+    ? 'Ready — will generate a statewide report'
+    : `${counties.length} count${counties.length !== 1 ? 'ies' : 'y'} selected`;
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+function resetReport() {
+  document.getElementById('report-area').style.display = 'none';
+  document.getElementById('preview-idle').style.display = 'flex';
+}
+
+// ── START ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
