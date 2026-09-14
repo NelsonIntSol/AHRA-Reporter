@@ -85,6 +85,24 @@ body{font-family:'DM Sans',sans-serif;font-size:14px;background:var(--stone-50);
 .sel-chk-row.hidden{display:none;}
 .sel-none-msg{padding:10px;font-size:12px;color:var(--stone-400);text-align:center;display:none;}
 
+/* STEP 3 — FIELD FILTER */
+.field-filter-wrap{border:1.5px solid var(--stone-200);border-radius:var(--radius);overflow:hidden;}
+.field-filter-actions{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--stone-50);border-bottom:1px solid var(--stone-200);}
+.field-filter-count{font-size:11px;color:var(--stone-500);}
+.field-filter-count strong{color:var(--green-700);}
+.field-filter-list{max-height:240px;overflow-y:auto;}
+.field-filter-list::-webkit-scrollbar{width:4px;}
+.field-filter-list::-webkit-scrollbar-thumb{background:var(--stone-300);border-radius:2px;}
+.ff-row{display:flex;align-items:center;gap:9px;padding:5px 10px;cursor:pointer;transition:background 0.1s;user-select:none;}
+.ff-row:hover{background:var(--green-50);}
+.ff-row.ff-off{opacity:0.45;}
+.ff-row.ff-hidden{display:none;}
+.ff-box{width:15px;height:15px;border:1.5px solid var(--stone-300);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;transition:all 0.12s;}
+.ff-row:not(.ff-off) .ff-box{background:var(--green-600);border-color:var(--green-600);color:white;}
+.ff-name{font-size:12px;color:var(--stone-800);line-height:1.3;}
+.ff-none-msg{padding:10px;font-size:12px;color:var(--stone-400);text-align:center;display:none;}
+.loading-placeholder{padding:16px;text-align:center;font-size:12px;color:var(--stone-400);}
+
 /* STATUS */
 .data-status{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;border-radius:var(--radius);background:var(--stone-50);border:1px solid var(--stone-200);font-size:12px;color:var(--stone-500);}
 .data-status.loading{color:var(--amber-500);border-color:#fde68a;background:#fef9ee;}
@@ -305,6 +323,36 @@ td.field-name{font-weight:500;color:var(--green-800);width:52%;}
         </div>
       </div>
 
+      <!-- STEP 3: FIELD FILTER -->
+      <div class="step-block" id="step3-block" style="opacity:0.45;pointer-events:none;">
+        <div class="step-head">
+          <div class="step-num">3</div>
+          <div class="step-head-text">
+            <h3>Filter Fields</h3>
+            <p>Uncheck any fields to hide them from the report</p>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="sel-search-wrap" style="margin-bottom:8px;">
+            <input class="sel-search" type="text" id="field-search" placeholder="Search fields…" oninput="filterFields(this.value)" autocomplete="off"/>
+            <span class="sel-search-icon">⌕</span>
+          </div>
+          <div class="field-filter-wrap">
+            <div class="field-filter-actions">
+              <span class="field-filter-count"><strong id="field-on-count">0</strong> of <strong id="field-total-count">0</strong> fields shown</span>
+              <div class="sel-action-btns">
+                <button class="sel-act-btn" onclick="setAllFields(true)">All on</button>
+                <button class="sel-act-btn" onclick="setAllFields(false)">All off</button>
+              </div>
+            </div>
+            <div class="field-filter-list" id="field-filter-list">
+              <div class="loading-placeholder">Select a report type to see fields.</div>
+            </div>
+            <div class="ff-none-msg" id="ff-none-msg">No fields match your search.</div>
+          </div>
+        </div>
+      </div>
+
       <button class="btn-generate" id="gen-btn" onclick="generateReport()" disabled>
         Generate Report
         <span class="btn-generate-sub" id="gen-sub">Select a report type and at least one area</span>
@@ -343,10 +391,9 @@ td.field-name{font-weight:500;color:var(--green-800);width:52%;}
 </div>
 
 <script>
-// ── LAYER CONFIG ───────────────────────────────────────────────────────────────
 const SOURCES = {
   county: {
-    url: 'https://gis.nelsonintelligencesolutions.com/arcgis/rest/services/Hosted/County_Data_Aggregated/FeatureServer/0',
+    url: 'https://services5.arcgis.com/t2t1phUp5Bj3z8Lp/ArcGIS/rest/services/CountyData_Combined/FeatureServer/0',
     districtField: 'county',
     label: 'County',
     icon: '🏛️',
@@ -393,8 +440,9 @@ const state = {
   cache: { county: {}, house: {}, senate: {} },
   orderedFields: { county: [], house: [], senate: [] },
   outFields: { county: '*', house: '*', senate: '*' },
-  // district list items: [{id, label, sub}]
-  districtItems: { house: [], senate: [] }
+  districtItems: { house: [], senate: [] },
+  // disabledFields[mode] = Set of field names the user has turned off
+  disabledFields: { county: new Set(), house: new Set(), senate: new Set() }
 };
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -425,6 +473,8 @@ async function discoverFields(mode) {
     });
     state.orderedFields[mode] = ordered;
     state.outFields[mode] = names.join(',') || '*';
+    // If this is the current mode, refresh Step 3
+    if (mode === state.mode) buildFieldFilterList(mode);
   } catch(e) {}
 }
 
@@ -514,6 +564,7 @@ function setMode(mode) {
   const subs = { county:'75 counties — each prints on its own page', house:'100 districts — each prints on its own page', senate:'35 districts — each prints on its own page' };
   document.getElementById('step2-title').textContent = titles[mode];
   document.getElementById('step2-sub').textContent = subs[mode];
+  buildFieldFilterList(mode);
   updateGenBtn();
 }
 
@@ -579,6 +630,89 @@ function setStatus(msg, type='') {
   el.innerHTML = `<div class="status-dot"></div>${msg}`;
 }
 
+// ── STEP 3: FIELD FILTER ──────────────────────────────────────────────────────
+function buildFieldFilterList(mode) {
+  const fields = state.orderedFields[mode];
+  const step3 = document.getElementById('step3-block');
+  const list = document.getElementById('field-filter-list');
+  const noneMsg = document.getElementById('ff-none-msg');
+
+  if (!fields || fields.length === 0) {
+    step3.style.opacity = '0.45';
+    step3.style.pointerEvents = 'none';
+    list.innerHTML = '<div class="loading-placeholder">Loading fields…</div>';
+    return;
+  }
+
+  // Enable Step 3
+  step3.style.opacity = '1';
+  step3.style.pointerEvents = 'auto';
+  noneMsg.style.display = 'none';
+
+  // Clear search box
+  document.getElementById('field-search').value = '';
+
+  list.innerHTML = '';
+  fields.forEach(({ name, alias }) => {
+    const isOff = state.disabledFields[mode].has(name);
+    const row = document.createElement('div');
+    row.className = 'ff-row' + (isOff ? ' ff-off' : '');
+    row.dataset.field = name;
+    row.dataset.search = alias.toLowerCase();
+    row.innerHTML = `<div class="ff-box">✓</div><span class="ff-name">${alias}</span>`;
+    row.addEventListener('click', () => toggleField(mode, name, row));
+    list.appendChild(row);
+  });
+
+  updateFieldCount(mode);
+}
+
+function toggleField(mode, name, row) {
+  const disabled = state.disabledFields[mode];
+  if (disabled.has(name)) {
+    disabled.delete(name);
+    row.classList.remove('ff-off');
+  } else {
+    disabled.add(name);
+    row.classList.add('ff-off');
+  }
+  updateFieldCount(mode);
+}
+
+function updateFieldCount(mode) {
+  const total = state.orderedFields[mode].length;
+  const off = state.disabledFields[mode].size;
+  document.getElementById('field-on-count').textContent = total - off;
+  document.getElementById('field-total-count').textContent = total;
+}
+
+function setAllFields(on) {
+  const mode = state.mode;
+  const disabled = state.disabledFields[mode];
+  document.querySelectorAll('#field-filter-list .ff-row').forEach(row => {
+    const name = row.dataset.field;
+    if (on) {
+      disabled.delete(name);
+      row.classList.remove('ff-off');
+    } else {
+      disabled.add(name);
+      row.classList.add('ff-off');
+    }
+  });
+  updateFieldCount(mode);
+}
+
+function filterFields(q) {
+  const term = q.toLowerCase().trim();
+  let visible = 0;
+  document.querySelectorAll('#field-filter-list .ff-row').forEach(row => {
+    const match = !term || row.dataset.search.includes(term);
+    row.classList.toggle('ff-hidden', !match);
+    if (match) visible++;
+  });
+  document.getElementById('ff-none-msg').style.display = visible === 0 ? 'block' : 'none';
+}
+
 // ── FETCH ─────────────────────────────────────────────────────────────────────
 async function fetchItem(mode, id) {
   const cacheKey = String(id);
@@ -586,13 +720,23 @@ async function fetchItem(mode, id) {
   const src = SOURCES[mode];
   let where;
   if (mode === 'county') {
-    where = `UPPER(${src.districtField}) = UPPER('${String(id).replace(/'/g,"''")}')`;
+    where = id === '__all__' ? '1=1' : `UPPER(${src.districtField}) = UPPER('${String(id).replace(/'/g,"''")}')`;
   } else {
     where = `${src.districtField} = ${id}`;
   }
-  const params = new URLSearchParams({ where, outFields: state.outFields[mode], returnGeometry: false, f: 'json' });
+  // POST avoids HTTP 414 / 404 caused by extremely long outFields GET URLs
+  const body = new URLSearchParams({
+    where,
+    outFields: state.outFields[mode],
+    returnGeometry: false,
+    f: 'json'
+  });
   try {
-    const res = await fetch(`${src.url}/query?${params}`);
+    const res = await fetch(`${src.url}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (json.error) throw new Error(`${json.error.code}: ${json.error.message}`);
@@ -708,6 +852,8 @@ function buildPage(mode, id, features, dateStr) {
       }
 
       fieldList.forEach(({ name, alias }) => {
+        // Skip if user turned this field off in Step 3
+        if (state.disabledFields[mode].has(name)) return;
         const val = attrs.hasOwnProperty(name) ? attrs[name]
           : attrs[name.toLowerCase()] !== undefined ? attrs[name.toLowerCase()]
           : undefined;
